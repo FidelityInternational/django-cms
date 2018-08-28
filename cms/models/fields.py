@@ -75,6 +75,16 @@ class PlaceholderField(models.ForeignKey):
         cls._meta.placeholder_fields[self] = name
         self.model = cls
 
+    def add_permission(self, permission):
+        # Get the attached placeholder
+        # and add a permission to Placeholder.change_permission_list
+        pass
+
+    def remove_permission(self, permission):
+        # Get the attached placeholder
+        # remove permission from Placeholder.change_permission_list
+        pass
+
 
 class PageField(models.ForeignKey):
     default_form_class = PageSelectFormField

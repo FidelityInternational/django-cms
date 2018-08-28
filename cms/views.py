@@ -219,6 +219,9 @@ def render_object_edit(request, content_type_id, object_id):
     if not hasattr(content_type_obj, 'get_absolute_url'):
         return HttpResponseBadRequest('Requested object does not have a valid url')
 
+    if not content_type_obj.Placeholder.name_conflicts_has_change_permission(request, object_id):
+        raise Http403
+    
     abs_url = content_type_obj.get_absolute_url()
     match = resolve(abs_url)
     toolbar = get_toolbar_from_request(request)
