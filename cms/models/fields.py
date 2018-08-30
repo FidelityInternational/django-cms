@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
+from django.db import models
+from django.utils.functional import cached_property
+
 from cms.forms.fields import PageSelectFormField
 from cms.models.placeholdermodel import Placeholder
-from django.db import models
 
 
 class PlaceholderField(models.ForeignKey):
 
-    def __init__(self, slotname, default_width=None, actions=None, **kwargs):
+    def __init__(self, slotname, default_width=None, actions=None, checks=(), **kwargs):
         from cms.utils.placeholder import PlaceholderNoAction, validate_placeholder_name
 
         if not actions:
@@ -16,15 +18,22 @@ class PlaceholderField(models.ForeignKey):
             raise ValueError("PlaceholderField does not support disabling of related names via '+'.")
         if not callable(slotname):
             validate_placeholder_name(slotname)
+
         self.slotname = slotname
         self.default_width = default_width
         self.actions = actions()
+        
+        # Checks
+        self.default_checks = []  # Set default checks
+        self._checks = list(checks) # Store external checks for use later
+
         kwargs.update({'null': True})  # always allow Null
         kwargs.update({'editable': False}) # never allow edits in admin
         # We hard-code the `to` argument for ForeignKey.__init__
         # since a PlaceholderField can only be a ForeignKey to a Placeholder
         kwargs['to'] = 'cms.Placeholder'
         kwargs['on_delete'] = models.CASCADE
+
         super(PlaceholderField, self).__init__(**kwargs)
 
     def deconstruct(self):
@@ -33,7 +42,7 @@ class PlaceholderField(models.ForeignKey):
         return name, path, args, kwargs
 
     def _get_new_placeholder(self, instance):
-        return Placeholder.objects.create(slot=self._get_placeholder_slot(instance), default_width=self.default_width)
+        return Placeholder.objects.create(slot=self._get_placeholder_slot(instance), default_width=self.default_width, source=instance)
 
     def _get_placeholder_slot(self, model_instance):
         from cms.utils.placeholder import validate_placeholder_name
@@ -75,15 +84,19 @@ class PlaceholderField(models.ForeignKey):
         cls._meta.placeholder_fields[self] = name
         self.model = cls
 
-    def add_permission(self, permission):
-        # Get the attached placeholder
-        # and add a permission to Placeholder.change_permission_list
-        pass
+    @cached_property
+    def checks(self):
+        """
+        Combine default checks with externally supplied checks
+        """
+        return list(itertools.chain(self.default_checks, self._checks))
 
-    def remove_permission(self, permission):
-        # Get the attached placeholder
-        # remove permission from Placeholder.change_permission_list
-        pass
+    def run_checks(self, **kwargs):
+        """
+        Run checks defined both internally (default) and externally
+        """
+        for check in self.checks:
+            check(**kwargs)
 
 
 class PageField(models.ForeignKey):

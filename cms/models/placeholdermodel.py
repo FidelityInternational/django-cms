@@ -47,9 +47,6 @@ class Placeholder(models.Model):
     is_static = False
     is_editable = True
 
-    # A list of the permissions, populated by the PlaceholderField instance
-    change_permission_list = []
-
     class Meta:
         app_label = 'cms'
         permissions = (
@@ -87,14 +84,6 @@ class Placeholder(models.Model):
     def get_extra_menu_items(self):
         from cms.plugin_pool import plugin_pool
         return plugin_pool.get_extra_placeholder_menu_items(self)
-
-    # This seems massiveley flawed as any additional params required by third parties would not be possible
-    def name_conflicts_has_change_permission(self, request, obj_id):
-        for permission_check in self.change_permission_list:
-            granted = permission_check(request, obj_id)
-            if not granted:
-                return False
-        return True
 
     def has_change_permission(self, user):
         """
